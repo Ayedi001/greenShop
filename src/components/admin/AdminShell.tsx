@@ -63,12 +63,6 @@ const NAV: { group: [string, string]; items: NavItem[] }[] = [
       },
       { icon: Package, fr: "Produits", ar: "المنتجات", to: "/admin/products" },
       { icon: Boxes, fr: "Stock", ar: "المخزون", to: "/admin/inventory" },
-      {
-        to: "/admin/ai-writer",
-        icon: Sparkles,
-        fr: "Rédaction IA",
-        ar: "التحرير بالذكاء الاصطناعي",
-      },
     ],
   },
   {

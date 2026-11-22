@@ -36,7 +36,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { DescriptionGenerator } from "@/components/admin/ai/DescriptionGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { uploadCatalogImage } from "@/lib/storage";
@@ -201,7 +200,6 @@ export function ProductForm({
   );
   const removedPaths = useRef<string[]>([]);
   const [uploading, setUploading] = useState(0);
-  const [aiOpen, setAiOpen] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -622,14 +620,7 @@ export function ProductForm({
             </div>
           </Section>
 
-          <Section
-            title={tr("Description", "الوصف")}
-            actions={
-              <Button type="button" variant="outline" size="sm" onClick={() => setAiOpen(true)}>
-                <Sparkles /> {tr("Rédiger avec l'IA", "اكتب بالذكاء الاصطناعي")}
-              </Button>
-            }
-          >
+          <Section title={tr("Description", "الوصف")}>
             <div className="grid gap-4 md:grid-cols-2">
               <Field label={tr("Français", "الفرنسية")}>
                 <Textarea
@@ -1125,42 +1116,6 @@ export function ProductForm({
           )}
         </aside>
       </div>
-
-      <Dialog open={aiOpen} onOpenChange={setAiOpen}>
-        <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {tr("Rédiger la description avec l'IA", "كتابة الوصف بالذكاء الاصطناعي")}
-            </DialogTitle>
-            <DialogDescription>
-              {tr(
-                "Vérifiez les caractéristiques, choisissez un modèle puis appliquez le texte au produit.",
-                "تحقق من الخصائص، اختر نموذجاً ثم طبّق النص على المنتج.",
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <DescriptionGenerator
-            initial={{
-              productName: name_fr,
-              categoryId: categoryId || null,
-              brand,
-              model,
-              warranty,
-            }}
-            onApply={(r) => {
-              if (r.description_fr) setDescFr(r.description_fr);
-              if (r.description_ar) setDescAr(r.description_ar);
-              setAiOpen(false);
-              toast.success(
-                tr(
-                  "Description appliquée — pensez à enregistrer.",
-                  "تم تطبيق الوصف — لا تنس الحفظ.",
-                ),
-              );
-            }}
-          />
-        </DialogContent>
-      </Dialog>
     </form>
   );
 }

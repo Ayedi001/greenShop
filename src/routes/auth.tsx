@@ -71,7 +71,7 @@ function AuthPage() {
   const { t } = useI18n();
   const { redirect } = Route.useSearch();
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, isStaff, loading } = useAuth();
   const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
@@ -83,13 +83,19 @@ function AuthPage() {
     if (redirect) window.sessionStorage.setItem(REDIRECT_KEY, safePath(redirect));
   }, [redirect]);
 
-  // once signed in, go to the stored destination
+  // once signed in, go to the stored destination (or admin dashboard if staff)
   useEffect(() => {
     if (loading || !user) return;
-    const target = safePath(window.sessionStorage.getItem(REDIRECT_KEY) ?? redirect);
+    const stored = window.sessionStorage.getItem(REDIRECT_KEY);
+    const target = safePath(stored ?? redirect);
     window.sessionStorage.removeItem(REDIRECT_KEY);
-    navigate({ to: target, replace: true });
-  }, [user, loading, redirect, navigate]);
+
+    if (target === "/" && isStaff) {
+      navigate({ to: "/admin/dashboard", replace: true });
+    } else {
+      navigate({ to: target, replace: true });
+    }
+  }, [user, isStaff, loading, redirect, navigate]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();

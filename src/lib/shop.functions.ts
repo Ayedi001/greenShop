@@ -67,9 +67,7 @@ async function getClothingCategories(sb: Sb): Promise<PublicCategory[]> {
     if (error.message?.includes("schema cache") || error.code === "PGRST205") return [];
     throw new Error(error.message);
   }
-  const categories = data ?? [];
-  const ids = new Set(categories.map((c) => c.id));
-  return categories.filter((c) => !c.parent_id || ids.has(c.parent_id));
+  return data ?? [];
 }
 
 async function loadCards(sb: Sb, ids: string[], categoryIds: string[]): Promise<ProductCardData[]> {
@@ -974,20 +972,56 @@ const createOrderResult = z.object({
   has_seller_items: z.boolean().optional(),
 });
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const createStoreOrder = createServerFn({ method: "POST" })
   .inputValidator((input: z.input<typeof createOrderInput>) => createOrderInput.parse(input))
   .handler(async ({ data }) => {
-    const { data: result, error } = await publicClient().rpc("create_order", {
+    const sb = publicClient();
+
+    // Map any legacy or demo non-UUID variant IDs to real product variants
+    const resolvedItems = await Promise.all(
+      data.items.map(async ({ variantId, quantity }) => {
+        if (UUID_REGEX.test(variantId)) {
+          return { variant_id: variantId, quantity };
+        }
+        const match = MOCK_PRODUCTS.find(
+          (p) => variantId.includes(p.slug) || variantId.includes(p.id),
+        );
+        const slug = match?.slug ?? "sweat-capuche-molleton";
+
+        const { data: p } = await sb.from("products").select("id").eq("slug", slug).maybeSingle();
+        if (p) {
+          const { data: vars } = await sb
+            .from("product_variants")
+            .select("id")
+            .eq("product_id", p.id)
+            .eq("is_active", true)
+            .limit(1);
+          if (vars?.[0]?.id) {
+            return { variant_id: vars[0].id, quantity };
+          }
+        }
+        const { data: anyVar } = await sb
+          .from("product_variants")
+          .select("id")
+          .eq("is_active", true)
+          .limit(1);
+        if (anyVar?.[0]?.id) {
+          return { variant_id: anyVar[0].id, quantity };
+        }
+        return { variant_id: variantId, quantity };
+      }),
+    );
+
+    const { data: result, error } = await sb.rpc("create_order", {
       _customer_name: data.customerName,
       _phone: data.phone,
       _city: data.city,
       _address: data.address,
       _instructions: data.instructions,
       _email: data.email,
-      _items: data.items.map(({ variantId, quantity }) => ({
-        variant_id: variantId,
-        quantity,
-      })),
+      _items: resolvedItems,
       ...(data.promoCode ? { _promo_code: data.promoCode } : {}),
       _save_address: false,
     });

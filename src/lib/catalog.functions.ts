@@ -27,8 +27,10 @@ export type PublicCategory = {
 };
 
 export const CLOTHING_CATEGORY_SLUGS = [
+  "mode",
   "femme",
   "robes",
+  "chemises",
   "chemises-femme",
   "vestes-femme",
   "homme",

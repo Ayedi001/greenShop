@@ -179,11 +179,42 @@ function CartPage() {
     }
   }
 
+  function normalizeTunisianPhone(raw: string): string | null {
+    let v = raw.replace(/[^0-9]/g, "");
+    if (v.startsWith("00216")) v = v.slice(5);
+    if (v.startsWith("216") && v.length === 11) v = v.slice(3);
+    return /^[2-9][0-9]{7}$/.test(v) ? v : null;
+  }
+
   async function handleOrderSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!checkoutForm.name.trim() || !checkoutForm.phone.trim() || !checkoutForm.address.trim()) {
+    const trimmedName = checkoutForm.name.trim();
+    const trimmedAddress = checkoutForm.address.trim();
+
+    if (trimmedName.length < 2) {
       toast.error(
-        tr("Veuillez remplir tous les champs obligatoires", "يرجى ملء جميع الحقول المطلوبة"),
+        tr(
+          "Veuillez renseigner votre nom complet (au moins 2 caractères).",
+          "يرجى إدخال الاسم واللقب (حرفان على الأقل).",
+        ),
+      );
+      return;
+    }
+    if (!normalizeTunisianPhone(checkoutForm.phone)) {
+      toast.error(
+        tr(
+          "Numéro de téléphone invalide (8 chiffres requis, ex: 98 123 456).",
+          "رقم الهاتف غير صالح (8 أرقام مطلوبة، مثل: 98 123 456).",
+        ),
+      );
+      return;
+    }
+    if (trimmedAddress.length < 5) {
+      toast.error(
+        tr(
+          "L'adresse de livraison doit comporter au moins 5 caractères (ex: 12 Rue..., Apt...).",
+          "يجب أن يتكون عنوان التوصيل من 5 أحرف على الأقل (مثل: 12 نهج...).",
+        ),
       );
       return;
     }
@@ -226,7 +257,7 @@ function CartPage() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
       if (message.includes("insufficient_stock")) void lines.refetch();
-      toast.error(
+      const err =
         message.includes("insufficient_stock")
           ? tr(
               "Le stock vient de changer. Vérifiez les quantités de votre panier.",
@@ -236,11 +267,26 @@ function CartPage() {
             ? tr("Un article n'est plus disponible.", "أحد المنتجات لم يعد متوفراً.")
             : message.includes("invalid_promo")
               ? tr("Ce code promo n'est plus valide.", "لم يعد رمز الخصم صالحاً.")
-              : tr(
-                  "La commande n'a pas pu être enregistrée. Réessayez.",
-                  "تعذّر تسجيل الطلب. حاول مرة أخرى.",
-                ),
-      );
+              : message.includes("invalid_address") || (message.includes("too_small") && message.includes("address"))
+                ? tr(
+                    "L'adresse doit comporter au moins 5 caractères.",
+                    "يجب أن يتكون العنوان من 5 أحرف على الأقل.",
+                  )
+                : message.includes("invalid_phone")
+                  ? tr(
+                      "Numéro de téléphone invalide (8 chiffres requis).",
+                      "رقم الهاتف غير صالح (8 أرقام مطلوبة).",
+                    )
+                  : message.includes("invalid_name")
+                    ? tr(
+                        "Nom trop court (au moins 2 caractères).",
+                        "الاسم قصير جداً (حرفان على الأقل).",
+                      )
+                    : tr(
+                        "La commande n'a pas pu être enregistrée. Réessayez.",
+                        "تعذّر تسجيل الطلب. حاول مرة أخرى.",
+                      );
+      toast.error(err);
     } finally {
       setIsSubmitting(false);
     }
@@ -495,6 +541,7 @@ function CartPage() {
               <Input
                 id="checkout-name"
                 required
+                minLength={2}
                 value={checkoutForm.name}
                 onChange={(e) => setCheckoutForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="ex: Yassine Trabelsi"
@@ -510,6 +557,12 @@ function CartPage() {
                 onChange={(e) => setCheckoutForm((f) => ({ ...f, phone: e.target.value }))}
                 placeholder="+216 98 123 456"
               />
+              <p className="text-[11px] text-muted-foreground">
+                {tr(
+                  "Numéro tunisien à 8 chiffres (ex: 98 123 456 ou +216 98 123 456)",
+                  "رقم تونسي مكون من 8 أرقام (مثال: 98 123 456 أو 216 98 123 456+)",
+                )}
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="checkout-city">
@@ -551,10 +604,17 @@ function CartPage() {
               <Input
                 id="checkout-address"
                 required
+                minLength={5}
                 value={checkoutForm.address}
                 onChange={(e) => setCheckoutForm((f) => ({ ...f, address: e.target.value }))}
                 placeholder="ex: 12 Rue Ibn Khaldoun, Étage 2, Apt 4"
               />
+              <p className="text-[11px] text-muted-foreground">
+                {tr(
+                  "Minimum 5 caractères (rue, numéro, bâtiment...)",
+                  "5 أحرف على الأقل (الشارع، الرقم، البناية...)",
+                )}
+              </p>
             </div>
             <div className="rounded-xl border bg-muted/40 p-3 text-xs space-y-1">
               <div className="flex justify-between font-medium">

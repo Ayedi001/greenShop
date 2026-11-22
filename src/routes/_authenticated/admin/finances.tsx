@@ -43,6 +43,9 @@ const ENTRY_LABELS: Record<EntryType, [string, string]> = {
   return_cogs_reversal: ["Reversement COGS (retour)", "عكس التكلفة (إرجاع)"],
   return_loss: ["Perte sur retour", "خسارة إرجاع"],
   damage_loss: ["Perte dommages", "خسارة تلف"],
+  commission: ["Commissions vendeurs", "عمولات البائعين"],
+  commission_reversal: ["Annulation commission", "إلغاء العمولة"],
+  seller_settlement: ["Règlement vendeur", "تسوية البائع"],
 };
 
 function AdminFinancesPage() {
@@ -89,12 +92,13 @@ function AdminFinancesPage() {
     const discount = map.get("discount") ?? 0;
     const delivery = map.get("delivery_income") ?? 0;
     const cash = map.get("cash_collected") ?? 0;
+    const commission = (map.get("commission") ?? 0) - (map.get("commission_reversal") ?? 0);
     const losses =
       (map.get("return_loss") ?? 0) +
       (map.get("damage_loss") ?? 0) +
       (map.get("refund") ?? 0);
-    const gross = revenue + delivery - discount - cogs - losses;
-    return { map, revenue, cogs, discount, delivery, cash, losses, gross };
+    const gross = revenue + delivery + commission - discount - cogs - losses;
+    return { map, revenue, cogs, discount, delivery, cash, commission, losses, gross };
   }, [entries.data]);
 
   if (!isAdmin) {
@@ -131,10 +135,14 @@ function AdminFinancesPage() {
         <ErrorState error={entries.error} onRetry={() => entries.refetch()} />
       ) : (
         <>
-          <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <Stat
               label={tr("CA livré", "رقم المعاملات المسلّم")}
               value={formatTND(totals.revenue, locale)}
+            />
+            <Stat
+              label={tr("Commissions", "العمولات")}
+              value={formatTND(totals.commission, locale)}
             />
             <Stat
               label={tr("Marge brute estimée", "الهامش الإجمالي التقديري")}
@@ -206,37 +214,41 @@ function AdminFinancesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {entries.data.map((e) => (
-                    <tr key={e.id} className="border-b last:border-0">
-                      <td className="px-4 py-3">
-                        <p className="font-medium">
-                          {tr(ENTRY_LABELS[e.entry_type][0], ENTRY_LABELS[e.entry_type][1])}
-                        </p>
-                        {e.note && (
-                          <p className="text-xs text-muted-foreground">{e.note}</p>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-end font-medium">
-                        {formatTND(e.amount, locale)}
-                      </td>
-                      <td className="hidden px-4 py-3 md:table-cell">
-                        {e.order_id && e.orders ? (
-                          <Link
-                            to="/admin/orders/$orderId"
-                            params={{ orderId: e.order_id }}
-                            className="font-mono text-primary hover:underline"
-                          >
-                            {e.orders.reference}
-                          </Link>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="hidden px-4 py-3 text-muted-foreground lg:table-cell">
-                        {formatDate(e.created_at, locale, true)}
-                      </td>
-                    </tr>
-                  ))}
+                  {entries.data.map((e) => {
+                    const labelPair = ENTRY_LABELS[e.entry_type];
+                    const labelText = labelPair
+                      ? tr(labelPair[0], labelPair[1])
+                      : e.entry_type;
+                    return (
+                      <tr key={e.id} className="border-b last:border-0">
+                        <td className="px-4 py-3">
+                          <p className="font-medium">{labelText}</p>
+                          {e.note && (
+                            <p className="text-xs text-muted-foreground">{e.note}</p>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-end font-medium">
+                          {formatTND(e.amount, locale)}
+                        </td>
+                        <td className="hidden px-4 py-3 md:table-cell">
+                          {e.order_id && e.orders ? (
+                            <Link
+                              to="/admin/orders/$orderId"
+                              params={{ orderId: e.order_id }}
+                              className="font-mono text-primary hover:underline"
+                            >
+                              {e.orders.reference}
+                            </Link>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="hidden px-4 py-3 text-muted-foreground lg:table-cell">
+                          {formatDate(e.created_at, locale, true)}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}

@@ -5,8 +5,14 @@ import { AdminShell } from "@/components/admin/AdminShell";
 // UI gate only — every admin write is also enforced by database policies.
 export const Route = createFileRoute("/_authenticated/admin")({
   beforeLoad: async () => {
-    const { data, error } = await supabase.rpc("is_staff");
-    if (error || !data) throw redirect({ to: "/admin-setup" });
+    const { data: isStaff, error } = await supabase.rpc("is_staff");
+    if (!error && isStaff) return;
+
+    const { data: adminExists } = await supabase.rpc("admin_exists");
+    if (!adminExists) {
+      throw redirect({ to: "/admin-setup" });
+    }
+    throw redirect({ to: "/" });
   },
   component: () => (
     <AdminShell>

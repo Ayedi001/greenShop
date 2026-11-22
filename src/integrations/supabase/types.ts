@@ -1575,7 +1575,10 @@ export type Database = {
         | "return_revenue_reversal"
         | "return_cogs_reversal"
         | "return_loss"
-        | "damage_loss";
+        | "damage_loss"
+        | "commission"
+        | "commission_reversal"
+        | "seller_settlement";
       movement_type:
         | "initial"
         | "restock"
@@ -1750,6 +1753,9 @@ export const Constants = {
         "return_cogs_reversal",
         "return_loss",
         "damage_loss",
+        "commission",
+        "commission_reversal",
+        "seller_settlement",
       ],
       movement_type: [
         "initial",
